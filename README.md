@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Snyk Security Scanner with Jira Integration
 
 This project demonstrates automated security scanning using Snyk with automatic Jira issue creation for vulnerabilities.
@@ -64,3 +65,6 @@ The GitHub Actions workflow:
 2. Performs Snyk security scan
 3. Creates Jira issues for any vulnerabilities found
 4. Monitors dependencies (on main branch)
+=======
+# actions_synk
+>>>>>>> 5fcabd09502ed694ca9a6e25d9cd54883947f166
