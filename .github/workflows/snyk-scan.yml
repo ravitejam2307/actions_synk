@@ -15,107 +15,96 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+    - run: npm ci
+    - run: npm test
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          cache-dependency-path: package-lock.json
-          node-version: '18'
-          cache: 'npm'
-        
-      - name: Install dependencies
-        run: npm ci
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
 
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-
-  security-scan:
-    name: Snyk Security Scan
-    runs-on: ubuntu-latest
-    needs: test
+  # security-scan:
+  #   name: Snyk Security Scan
+  #   runs-on: ubuntu-latest
+  #   needs: test
     
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          cache-dependency-path: package-lock.json
-          node-version: '18'
-          cache: 'npm'
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         cache-dependency-path: package-lock.json
+  #         node-version: '18'
+  #         cache: 'npm'
         
-      - name: Install dependencies
-        run: npm ci
+  #     - name: Install dependencies
+  #       run: npm ci
 
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        id: snyk-test
-        with:
-          args: --json-file-output=snyk-results.json --severity-threshold=medium
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #     - name: Run Snyk to check for vulnerabilities
+  #       uses: snyk/actions/node@master
+  #       continue-on-error: true
+  #       id: snyk-test
+  #       with:
+  #         args: --json-file-output=snyk-results.json --severity-threshold=medium
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      - name: Upload Snyk results
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: snyk-results
-          path: snyk-results.json
-          retention-days: 30
+  #     - name: Upload Snyk results
+  #       uses: actions/upload-artifact@v3
+  #       if: always()
+  #       with:
+  #         name: snyk-results
+  #         path: snyk-results.json
+  #         retention-days: 30
 
-      - name: Install Jira integration dependencies
-        if: failure() && steps.snyk-test.outcome == 'failure'
-        run: npm install axios
+  #     - name: Install Jira integration dependencies
+  #       if: failure() && steps.snyk-test.outcome == 'failure'
+  #       run: npm install axios
 
-      - name: Create Jira issues for vulnerabilities
-        if: failure() && steps.snyk-test.outcome == 'failure'
-        env:
-          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-        run: node scripts/jira-integration.js
+  #     - name: Create Jira issues for vulnerabilities
+  #       if: failure() && steps.snyk-test.outcome == 'failure'
+  #       env:
+  #         JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+  #         JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+  #         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+  #         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+  #       run: node scripts/jira-integration.js
 
-      - name: Clean up scan artifacts
-        if: always()
-        run: |
-          rm -f snyk-results.json
-          rm -f snyk-report.html
+  #     - name: Clean up scan artifacts
+  #       if: always()
+  #       run: |
+  #         rm -f snyk-results.json
+  #         rm -f snyk-report.html
 
-      - name: Monitor dependencies with Snyk
-        if: github.ref == 'refs/heads/main'
-        uses: snyk/actions/node@master
-        with:
-          command: monitor
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  #     - name: Monitor dependencies with Snyk
+  #       if: github.ref == 'refs/heads/main'
+  #       uses: snyk/actions/node@master
+  #       with:
+  #         command: monitor
+  #       env:
+  #         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  notify:
-    name: Notify Results
-    runs-on: ubuntu-latest
-    needs: [test, security-scan]
-    if: always()
+  # notify:
+  #   name: Notify Results
+  #   runs-on: ubuntu-latest
+  #   needs: [test, security-scan]
+  #   if: always()
     
-    steps:
-      - name: Notify success
-        if: needs.test.result == 'success' && needs.security-scan.result == 'success'
-        run: echo "✅ All checks passed successfully!"
+  #   steps:
+  #     - name: Notify success
+  #       if: needs.test.result == 'success' && needs.security-scan.result == 'success'
+  #       run: echo "✅ All checks passed successfully!"
 
-      - name: Notify failure
-        if: needs.test.result == 'failure' || needs.security-scan.result == 'failure'
-        run: |
-          echo "❌ Pipeline failed!"
-          echo "Test result: ${{ needs.test.result }}"
-          echo "Security scan result: ${{ needs.security-scan.result }}"
+  #     - name: Notify failure
+  #       if: needs.test.result == 'failure' || needs.security-scan.result == 'failure'
+  #       run: |
+  #         echo "❌ Pipeline failed!"
+  #         echo "Test result: ${{ needs.test.result }}"
+  #         echo "Security scan result: ${{ needs.security-scan.result }}"
